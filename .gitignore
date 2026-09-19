@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+
+# ビルド成果物
+dist/
+build/
+
+# 環境変数
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
