@@ -51,7 +51,7 @@
 
 body {
   margin: 0;
-  padding: 24px 16px 40px;
+  padding: 40px 16px 40px;   /* 上は「+8」が浮き上がる余白ぶん多めに取る */
   background: var(--bg);
   color: var(--text);
   font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN",
@@ -95,6 +95,7 @@ body {
 }
 
 .score-box {
+  position: relative;   /* 加算演出をこの上に浮かせる */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -118,6 +119,66 @@ body {
   line-height: 1.2;
   /* 桁が増えても数字が揺れないように */
   font-variant-numeric: tabular-nums;
+}
+
+/* ----- スコア加算の演出（state.gainedScore） ----- */
+
+/* 「+8」の置き場。スコア枠のすぐ上に置き、レイアウトには影響させない
+   （枠の中に出すとラベルと重なって読めないため） */
+.score-box__gains {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 0;
+  pointer-events: none;
+}
+
+.gain {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text);
+  animation: gain-float 800ms ease-out forwards;
+}
+
+@keyframes gain-float {
+  0%   { opacity: 0;    transform: translateY(12px); }
+  15%  { opacity: 0.95; transform: translateY(2px); }
+  100% { opacity: 0;    transform: translateY(-20px); }
+}
+
+/* 数字そのものも一瞬だけ跳ねる */
+.score-box__value.is-bumped {
+  animation: score-bump 200ms ease-out;
+}
+
+@keyframes score-bump {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* 動きを控える設定のときは、動かさず色だけで見せる
+   （animation 自体は残す。消えなくなるのを防ぐため） */
+@media (prefers-reduced-motion: reduce) {
+  .gain {
+    animation: gain-fade 800ms ease-out forwards;
+  }
+
+  .score-box__value.is-bumped {
+    animation: none;
+  }
+
+  @keyframes gain-fade {
+    0%   { opacity: 0; }
+    15%  { opacity: 0.95; }
+    100% { opacity: 0; }
+  }
 }
 
 /* ==============================
@@ -169,6 +230,10 @@ body {
 
 .board-wrap {
   position: relative;   /* overlay をこの中に重ねる */
+  /* スワイプ中にページがスクロールしたり、文字が選択されたりしないようにする */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .board {

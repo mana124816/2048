@@ -7,6 +7,12 @@
 const SIZE = 4;
 const BEST_KEY = "2048-best";
 
+// これ未満の動きはスワイプではなくタップとして無視する（px）
+const SWIPE_THRESHOLD = 24;
+
+// スコア加算の「+8」を消すまでの保険の時間（ms）
+const GAIN_LIFETIME = 900;
+
 // よく使う要素は最初に一度だけ取っておく
 let boardEl = null;
 let scoreEl = null;
@@ -16,6 +22,13 @@ let overlayTitleEl = null;
 let overlayScoreEl = null;
 let overlayButtonEl = null;
 let restartEl = null;
+let boardWrapEl = null;
+let gainsEl = null;
+
+// スワイプ中の指（またはマウス）を覚えておく
+let activePointerId = null;
+let pointerStartX = 0;
+let pointerStartY = 0;
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -27,8 +40,15 @@ document.addEventListener("DOMContentLoaded", () => {
     overlayScoreEl = overlayEl.querySelector(".overlay__score-value");
     overlayButtonEl = overlayEl.querySelector(".overlay__button");
     restartEl = document.querySelector("#restart");
+    boardWrapEl = document.querySelector(".board-wrap");
+    gainsEl = document.querySelector(".score-box__gains");
 
     restartEl.addEventListener("click", restart);
+
+    // スワイプ（スマホの指、マウスのドラッグ、トラックパッドを同じ扱いにする）
+    boardWrapEl.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
 
     overlayButtonEl.addEventListener("click", () => {
         // クリア画面なら閉じて続行、ゲームオーバーなら最初から
@@ -56,12 +76,23 @@ document.addEventListener("keydown", (event) => {
     // 矢印キーでページがスクロールしないようにする
     event.preventDefault();
 
+    handleInput(direction);
+});
+
+
+/**
+ * 移動の入り口
+ *
+ * 矢印キーとスワイプの両方がここを通る。
+ * 入力の取り方が増えても、game.js の呼び方は 1 か所のままにしておく。
+ */
+function handleInput(direction) {
     // ゲームオーバー画面が出ている間は操作を受け付けない
     if (isOverlayVisible() && overlayEl.dataset.type === "gameover") {
         return;
     }
 
-    // クリア画面は矢印キーで閉じて続けられる（SPEC 5-⑥）
+    // クリア画面は次の操作で閉じて続けられる（SPEC 5-⑥）
     hideOverlay();
 
     const state = move(direction);
@@ -75,7 +106,7 @@ document.addEventListener("keydown", (event) => {
     if (state.isGameOver) {
         showOverlay("gameover", state.score);
     }
-});
+}
 
 
 /**
@@ -111,6 +142,8 @@ function render(state) {
     const score = toNumber(state.score);
     scoreEl.textContent = String(score);
     bestEl.textContent = String(saveBest(score));
+
+    showGain(toNumber(state.gainedScore));
 }
 
 
@@ -130,6 +163,76 @@ function showOverlay(type, score) {
     overlayButtonEl.textContent = isWin ? "続ける" : "もう一度";
 
     overlayEl.hidden = false;
+}
+
+
+// ===== スワイプ操作 =====
+
+/**
+ * 指が触れた（マウスが押された）位置を覚える
+ */
+function onPointerDown(event) {
+    // 2 本目以降の指は無視する
+    if (activePointerId !== null) {
+        return;
+    }
+
+    activePointerId = event.pointerId;
+    pointerStartX = event.clientX;
+    pointerStartY = event.clientY;
+}
+
+
+/**
+ * 離した位置との差を見て、方向を決める
+ *
+ * 盤面の外で離されても拾えるよう、pointerup は window で受けている。
+ */
+function onPointerUp(event) {
+    if (event.pointerId !== activePointerId) {
+        return;
+    }
+
+    activePointerId = null;
+
+    const direction = directionFromSwipe(
+        event.clientX - pointerStartX,
+        event.clientY - pointerStartY
+    );
+
+    if (direction === null) {
+        return;
+    }
+
+    handleInput(direction);
+}
+
+
+function onPointerCancel(event) {
+    if (event.pointerId === activePointerId) {
+        activePointerId = null;
+    }
+}
+
+
+/**
+ * 動いた距離から方向を決める
+ * 短すぎる動きはタップなので null（ボタンを押しただけのときに動かないようにする）
+ */
+function directionFromSwipe(dx, dy) {
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (Math.max(absX, absY) < SWIPE_THRESHOLD) {
+        return null;
+    }
+
+    // 動きが大きい軸を採用する（斜めのスワイプでも 1 方向に決まる）
+    if (absX > absY) {
+        return dx > 0 ? "right" : "left";
+    }
+
+    return dy > 0 ? "down" : "up";
 }
 
 
@@ -240,6 +343,47 @@ function hideOverlay() {
 
 function isOverlayVisible() {
     return overlayEl.hidden === false;
+}
+
+
+/**
+ * 増えたスコアを「+8」として浮かせる（state.gainedScore）
+ *
+ * 増えていないときは何も出さない。
+ */
+function showGain(gained) {
+    if (gained <= 0) {
+        return;
+    }
+
+    const gain = document.createElement("span");
+    gain.className = "gain";
+    gain.textContent = "+" + gained;
+
+    // アニメが終わったら自分で消える。
+    // 動きを切っている環境でも残り続けないよう、時間切れの保険も付ける
+    gain.addEventListener("animationend", () => gain.remove());
+    setTimeout(() => gain.remove(), GAIN_LIFETIME);
+
+    // 常に最新の 1 つだけ出す。
+    // 素早く連続で合体したとき、同じ位置に重なって数字が読めなくなるのを防ぐ
+    gainsEl.replaceChildren(gain);
+
+    bumpScore();
+}
+
+
+/**
+ * スコアの数字を一瞬だけ跳ねさせる
+ */
+function bumpScore() {
+    scoreEl.classList.remove("is-bumped");
+
+    // クラスを付け直すだけではアニメが再生されないので、
+    // 一度レイアウトを読んでブラウザに変化を認識させる
+    void scoreEl.offsetWidth;
+
+    scoreEl.classList.add("is-bumped");
 }
 
 
