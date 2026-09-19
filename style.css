@@ -1,0 +1,336 @@
+/* ==============================
+   2048 - style
+   色や間隔を変えたいときは、まず :root だけ見れば足ります。
+   ============================== */
+
+:root {
+  /* ----- 全体 ----- */
+  --bg:          #faf8ef;
+  --text:        #776e65;
+  --text-weak:   #9c8f83;
+
+  /* ----- 盤面 ----- */
+  --board-bg:    #bbada0;
+  --cell-bg:     #cdc1b4;
+  --board-size:  min(92vw, 440px);   /* 盤面の一辺 */
+  --board-gap:   2.8%;               /* タイルの隙間 */
+  --board-radius: 12px;
+  --tile-radius:  7px;
+
+  /* ----- ボタン ----- */
+  --button-bg:      #8f7a66;
+  --button-bg-dark: #7c6957;
+  --button-fg:      #f9f6f2;
+
+  /* ----- タイルの文字色 ----- */
+  --tile-fg-dark:  #776e65;   /* 2 と 4 に使う */
+  --tile-fg-light: #f9f6f2;   /* 8 以上に使う */
+
+  /* ----- タイル 11 段階 ----- */
+  --t2:      #eee4da;
+  --t4:      #ede0c8;
+  --t8:      #f2b179;
+  --t16:     #f59563;
+  --t32:     #f67c5f;
+  --t64:     #f65e3b;
+  --t128:    #edcf72;
+  --t256:    #edcc61;
+  --t512:    #edc850;
+  --t1024:   #edc53f;
+  --t2048:   #edc22e;
+  --t-super: #3c3a32;         /* 4096 以降。保険 */
+}
+
+/* ==============================
+   ベース
+   ============================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 40px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN",
+               "Yu Gothic", Meiryo, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* スワイプ操作でページが引っぱられないように */
+  overscroll-behavior: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.app {
+  width: var(--board-size);
+  margin: 0 auto;
+}
+
+/* ==============================
+   ヘッダー（タイトルとスコア）
+   ============================== */
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2.4rem, 11vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.scores {
+  display: flex;
+  gap: 8px;
+}
+
+.score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 68px;
+  padding: 7px 10px 9px;
+  border-radius: 6px;
+  background: var(--board-bg);
+  color: var(--button-fg);
+}
+
+.score-box__label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #eee4da;
+}
+
+.score-box__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  /* 桁が増えても数字が揺れないように */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==============================
+   説明とボタン
+   ============================== */
+
+.subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 14px;
+}
+
+.lead {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-weak);
+}
+
+.lead strong {
+  color: var(--text);
+}
+
+.button {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover {
+  background: var(--button-bg-dark);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+/* ==============================
+   盤面
+   ============================== */
+
+.board-wrap {
+  position: relative;   /* overlay をこの中に重ねる */
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: var(--board-gap);
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: var(--board-gap);
+  border-radius: var(--board-radius);
+  background: var(--board-bg);
+  /* スワイプ中にブラウザのスクロールを起こさない */
+  touch-action: none;
+  user-select: none;
+}
+
+/* 16 個ぶんの土台。空きマスもこれで見える */
+.cell {
+  position: relative;
+  border-radius: var(--tile-radius);
+  background: var(--cell-bg);
+}
+
+/* ==============================
+   タイル
+   ============================== */
+
+.tile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tile-radius);
+  background: var(--t2);
+  color: var(--tile-fg-dark);
+  font-size: clamp(1.15rem, 6.2vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 数字ごとの色 */
+.tile-2    { background: var(--t2); }
+.tile-4    { background: var(--t4); }
+.tile-8    { background: var(--t8);    color: var(--tile-fg-light); }
+.tile-16   { background: var(--t16);   color: var(--tile-fg-light); }
+.tile-32   { background: var(--t32);   color: var(--tile-fg-light); }
+.tile-64   { background: var(--t64);   color: var(--tile-fg-light); }
+.tile-128  { background: var(--t128);  color: var(--tile-fg-light); }
+.tile-256  { background: var(--t256);  color: var(--tile-fg-light); }
+.tile-512  { background: var(--t512);  color: var(--tile-fg-light); }
+.tile-1024 { background: var(--t1024); color: var(--tile-fg-light); }
+.tile-2048 { background: var(--t2048); color: var(--tile-fg-light);
+             box-shadow: 0 0 22px rgba(237, 194, 46, 0.55); }
+
+/* 2048 より上。色切れでタイルが白くならないための保険 */
+.tile-super { background: var(--t-super); color: var(--tile-fg-light); }
+
+/* 桁が増えたら文字を縮める */
+.tile-128, .tile-256, .tile-512   { font-size: clamp(1.0rem,  5.2vw, 1.8rem); }
+.tile-1024, .tile-2048, .tile-super { font-size: clamp(0.85rem, 4.4vw, 1.55rem); }
+
+/* ==============================
+   出現 / 合体のアニメーション
+   （SPEC 6 章。ここだけで演出が完結します）
+   ============================== */
+
+@keyframes tile-appear {
+  from { transform: scale(0.3); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes tile-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.tile--new {
+  animation: tile-appear 150ms ease-out;
+}
+
+.tile--merged {
+  animation: tile-pop 170ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile--new,
+  .tile--merged {
+    animation: none;
+  }
+}
+
+/* ==============================
+   結果画面（ゲームオーバー / クリア）
+   ============================== */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--board-radius);
+  background: rgba(250, 248, 239, 0.9);
+  backdrop-filter: blur(3px);
+  text-align: center;
+  animation: overlay-in 220ms ease-out;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.overlay__title {
+  margin: 0;
+  font-size: clamp(1.8rem, 9vw, 2.6rem);
+  font-weight: 800;
+}
+
+.overlay__score {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-weak);
+}
+
+.overlay__score-value {
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.overlay__button {
+  margin-top: 6px;
+}
+
+/* クリア時は金色に寄せる */
+.overlay--win {
+  background: rgba(237, 194, 46, 0.9);
+}
+
+.overlay--win .overlay__title,
+.overlay--win .overlay__score-value {
+  color: #fffdf7;
+}
+
+.overlay--win .overlay__score {
+  color: rgba(255, 253, 247, 0.85);
+}
+
+/* ==============================
+   その他
+   ============================== */
+
+.hint {
+  margin: 18px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-weak);
+  text-align: center;
+}
